@@ -19,9 +19,8 @@ function interface_density(dΩ, ϕ, par, dx, dy)
             ϕxy = find_ϕxy_y(ip, ϕ, par, dx, dy)
             ϕyy = find_ϕyy_y(ip, ϕ, par, dy)
         end
-        # Compute local curvature and apply penalisation
-        K = (ϕxx*ϕy^2 - 2*ϕy*ϕx*ϕxy + ϕyy*ϕx^2)/((ϕx^2 + ϕy^2)^1.5)
-        push!(uf, par.uf - par.γ*K) # Modify later to add curvature formula
+        K = (ϕxx*ϕy^2 - 2*ϕy*ϕx*ϕxy + ϕyy*ϕx^2)/((ϕx^2 + ϕy^2)^1.5) # Local curvature
+        push!(uf, (par.uf - par.γ*K).^(par.m+1)) # Φ on the interface
     end
     return uf
 end

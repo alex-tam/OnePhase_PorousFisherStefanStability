@@ -1,12 +1,12 @@
 # Solve 2D Porous-Fisher-Stefan model with  Dirichlet (x) and periodic (y) boundary conditions
 # Nizhum Rahman and  Alex Tam, 08/08/2023
 
-"Solve Fisher-KPP equation"
-function fkpp(D, dΩ, U, ϕ, uf, y, par, dx, dy, dt, i)
+"Solve Porous-Fisher equation"
+function pf(D, dΩ, U, ϕ, uf, y, par, dx, dy, dt, i)
     # Create vector from matrix data
     u = build_vector(U, D)
     # Construct and solve ODE problem using DifferentialEquations.jl
-    prob = ODEProblem((du, u, p, t) -> fkpp_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy), u, ((i-1)*dt, i*dt))
+    prob = ODEProblem((du, u, p, t) -> pf_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy), u, ((i-1)*dt, i*dt))
     sol = solve(prob, Tsit5(), reltol = 1e-3, abstol = 1e-6, saveat = i*dt)
     # Reshape solution to matrix
     U = build_u_matrix(sol[:,end], y, par, D)
@@ -14,7 +14,7 @@ function fkpp(D, dΩ, U, ϕ, uf, y, par, dx, dy, dt, i)
 end
 
 "Construct right-hand vector for use in DifferentialEquations.jl"
-function fkpp_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy)
+function pf_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy)
     U = build_u_matrix(u, y, par, D) # Generate matrix
     for i in eachindex(D) # Loop over grid points
         if (D[i].yInd != 1) && (D[i].yInd != par.Ny) && (D[i].Ω == true) && (D[i].dΩ == false) # Interior grid points inside Ω, away from dΩ
@@ -43,7 +43,7 @@ function fkpp_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy)
             # Compute Laplacian and source term
             uxx = 2.0*( u_left/(D[i].θxm*(D[i].θxm+D[i].θxp)) - u_mid/(D[i].θxm*D[i].θxp) + u_right/(D[i].θxp*(D[i].θxm+D[i].θxp)) )/(dx^2)
             uyy = 2.0*( u_bottom/(D[i].θym*(D[i].θym+D[i].θyp)) - u_mid/(D[i].θym*D[i].θyp) + u_top/(D[i].θyp*(D[i].θym+D[i].θyp)) )/(dy^2)
-            du[i] = par.D*(uxx + uyy)*(abs(u_mid))^(par.m/(1+par.m)) + par.λ*(1+par.m)*abs(u_mid)*(1-(abs(u_mid))^(1/(1+par.m)))
+            du[i] = par.D*(uxx + uyy)*u_mid^(par.m/(1+par.m)) + par.λ*(1+par.m)*u_mid*(1-u_mid^(1/(1+par.m)))
         elseif ((D[i].yInd == 1) || (D[i].yInd == par.Ny)) && (D[i].Ω == true) && (D[i].dΩ == false) # Boundary grid points inside Ω, away from dΩ
             # Obtain density at stencil points
             u_mid = U[D[i].xInd, D[i].yInd]
@@ -70,7 +70,7 @@ function fkpp_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy)
             # Compute Laplacian and source term
             uxx = 2.0*( u_left/(D[i].θxm*(D[i].θxm+D[i].θxp)) - u_mid/(D[i].θxm*D[i].θxp) + u_right/(D[i].θxp*(D[i].θxm+D[i].θxp)) )/(dx^2)
             uyy = 2.0*( u_bottom/(D[i].θym*(D[i].θym+D[i].θyp)) - u_mid/(D[i].θym*D[i].θyp) + u_top/(D[i].θyp*(D[i].θym+D[i].θyp)) )/(dy^2)
-            du[i] = par.D*(uxx + uyy)*(abs(u_mid))^(par.m/(1+par.m)) + par.λ*(1+par.m)*abs(u_mid)*(1-(abs(u_mid))^(1/(1+par.m)))
+            du[i] = par.D*(uxx + uyy)*u_mid^(par.m/(1+par.m)) + par.λ*(1+par.m)*u_mid*(1-u_mid^(1/(1+par.m)))
         else # Grid points outside Ω or close to dΩ
             du[i] = 0.0
         end

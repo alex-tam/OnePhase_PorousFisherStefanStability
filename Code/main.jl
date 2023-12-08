@@ -7,15 +7,15 @@ using Printf
 using Dierckx
 using LinearAlgebra
 using DifferentialEquations
-#using Plots
 using Measures
 using LaTeXStrings
 using DelimitedFiles
 using Roots
+
 # Include external files
 include("twic.jl")
 include("domain.jl")
-include("fkpp.jl")
+include("porous-fisher.jl")
 include("velocity_extension.jl")
 include("interface_density.jl")
 include("interface_speed.jl")
@@ -25,46 +25,34 @@ include("reinitialisation.jl")
 "Data structure for parameters"
 @with_kw struct Params
     D::Float64 = 1.0 # [-] Diffusion coefficient
+    m::Float64 = 0.5 # [-] Nonlinear diffusion exponent, D(u) = u^m
     λ::Float64 = 1.0 # [-] Reaction rate
-    κ::Float64 = 0.1 # [-] Inverse Stefan number
-    α::Float64 = 1.0 # [-] Maximum initial density
+    κ::Float64 = -0.1 # [-] Inverse Stefan number
+    γ::Float64 = 0.0 # [-] Surface tension coefficient
     β::Float64 = 5.0 # [-] Initial interface position
     uf::Float64 = 1e-6 # [-] Background density at interface
     θb::Float64 = 0.01 # [-] Threshold for whether a grid point is close to interface (relative to Δx)
     θ::Float64 = 1.99 # [-] Parameter for minmod flux-limiter
     Lx::Float64 = 10.0 # [-] Spatial domain limit (x)
     Ly::Float64 = 10.0 # [-] Spatial domain limit (y)
-    T::Float64 = 5.0 # [-] End time
-    m::Float64 = 0.5 # the power of f(u)=u^m
+    Lξ::Float64 = 10.0 # [-] Domain width for travelling wave (ξ)
+    T::Float64 = 0.1 # [-] End time
     Nx::Int = 201 # [-] Number of grid points (x)
     Ny::Int = 201 # [-] Number of grid points (y)
-    Nt::Int = 101 # [-] Number of time steps
-    Nξ::Int = 2001 # [-] Number of grid points for travelling wave (ξ)
+    Nt::Int = 501 # [-] Number of time steps
+    Nξ::Int = 101 # [-] Number of grid points for travelling wave (ξ)
+    a::Float64 = 1e-2 # [-] Parameter for geometric progression
     V_Iterations::Int = 20 # [-] Number of iterations for velocity extrapolation PDE
     ϕ_Iterations::Int = 20 # [-] Number of iterations for reinitialisation PDE
-    γ::Float64 = 0.0 # [-] Surface tension coefficient
-    ε::Float64 = 0.1#0.1 # [-] Small amplitude of perturbations
-    q::Float64 = 2*π/5 # [-] Wave number of perturbations
-    
-        L::Float64 = 10.0 # [-] Domain half-width
-        Nz::Int = 101 # [-] Number of grid points
-        #uf::Float64 = 0.000001 # [-] # Front density (u)
-        #vf::Float64 = 0.0 # [-] # Front density (v)
-       
-    
-   
-    #κu::Float64 =-0.1 # [-]
-    a::Float64 =1* 1e-2
-    #m::Float64=1.0 # 
-    
-
+    ε::Float64 = 0.1 # [-] Small amplitude of perturbations
+    q::Float64 = 0.0 # [-] Wave number of perturbations
 end
 
 "Interpolate to obtain initial condition"
 function ic(par, x, y)
     U = Array{Float64}(undef, par.Nx, par.Ny) # Pre-allocate 2D array of U
     ϕ = Array{Float64}(undef, par.Nx, par.Ny) # Pre-allocate 2D array of ϕ
-    u0, u1, ξ = twicc(par)
+    u0, u1, ξ = twic(par)
     # Construct linear splines for interpolation
     spl_0 = Spline1D(ξ, u0; k=1) # Generate 1D linear spline
     spl_1 = Spline1D(ξ, u1; k=1) # Generate 1D linear spline
@@ -78,7 +66,7 @@ function ic(par, x, y)
     for i in eachindex(x)
         for j in eachindex(y)
             if ϕ[i,j] < 0 # If grid point is in Ω(0)
-                U[i,j] = spl_0(ϕ[i,j]) + par.ε*spl_1(ϕ[i,j])*cos(par.q*y[j])#1.0 # Perturbed travelling wave
+                U[i,j] = spl_0(ϕ[i,j]) + par.ε*spl_1(ϕ[i,j])*cos(par.q*y[j]) # Perturbed travelling wave
             else # If grid point is not in Ω(0)
                 U[i,j] = par.uf
             end
@@ -144,7 +132,7 @@ function front_position(x, ϕ, par, ny, dx)
 end
 
 "Compute a solution"
-function fisher_stefan_2d()
+function porous_fisher_stefan_2d()
     # Parameters and domain
     par = Params() # Initialise data structure of model parameters
     nx::Int = (par.Nx-1)/2; ny::Int = (par.Ny-1)/2 # Indices for slice plots
@@ -154,8 +142,8 @@ function fisher_stefan_2d()
     writedlm("x.csv", x); writedlm("y.csv", y); writedlm("t.csv", t) # Write data to files
     # Initial condition
     U, ϕ = ic(par, x, y) # Obtain initial density and ϕ
-    U = U.^(par.m+1) # Φ(x,y,t)
-    writedlm("U-0.csv", U); writedlm("Phi-0.csv", ϕ) # Write data to files
+    Φ = U.^(par.m+1) # Φ(x,y,t)
+    writedlm("U-0.csv", Φ); writedlm("Phi-0.csv", ϕ) # Write data to files
     plot_times = Vector{Int}() # Vector of time-steps at which data is obtained
     writedlm("plot_times.csv", plot_times)
     L = Vector{Float64}() # Preallocate empty vector of interface position
@@ -167,11 +155,11 @@ function fisher_stefan_2d()
         # 1. Find Ω, dΩ, and irregular grid points
         D = find_domain(par, ϕ)
         dΩ = find_interface(par, D, ϕ)
-        # 2. Solve FKPP equation on Ω
+        # 2. Solve Porous-Fisher equation on Ω
         uf = interface_density(dΩ, ϕ, par, dx, dy) # Density on interface for BC
-        @time U = fkpp(D, dΩ, U, ϕ, uf, y, par, dx, dy, dt, i)
+        @time Φ = pf(D, dΩ, Φ, ϕ, uf, y, par, dx, dy, dt, i)
         # 3. Compute extension velocity field
-        V = extend_velocity(D, dΩ, U, ϕ, par, dx, dy)
+        V = extend_velocity(D, dΩ, Φ, ϕ, par, dx, dy)
         # 4. Solve level-set equation
         ϕ = level_set(V, ϕ, par, dx, dy, dt)
         # 5. Re-initialise level-set function as a signed-distance function
@@ -179,10 +167,10 @@ function fisher_stefan_2d()
             ϕ = reinitialisation(ϕ, par, dx, dy, par.ϕ_Iterations)
         end
         # Optional: Post-processing
-        if mod(i, 50) == 0
-            writedlm("ux-$i.csv", U[:,ny])
-            writedlm("uy-$i.csv", U[nx,:])
-            writedlm("U-$i.csv", U)
+        if mod(i, 500) == 0
+            writedlm("ux-$i.csv", Φ[:,ny])
+            writedlm("uy-$i.csv", Φ[nx,:])
+            writedlm("U-$i.csv", Φ)
             writedlm("V-$i.csv", V)
             writedlm("Phi-$i.csv", ϕ)
             push!(plot_times, i)
@@ -197,4 +185,4 @@ function fisher_stefan_2d()
     end
 end
 
-@time fisher_stefan_2d()
+@time porous_fisher_stefan_2d()
