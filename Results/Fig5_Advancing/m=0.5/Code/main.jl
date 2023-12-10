@@ -27,7 +27,7 @@ include("reinitialisation.jl")
     D::Float64 = 1.0 # [-] Diffusion coefficient
     m::Float64 = 0.5 # [-] Nonlinear diffusion exponent, D(u) = u^m
     λ::Float64 = 1.0 # [-] Reaction rate
-    κ::Float64 = -0.1 # [-] Inverse Stefan number
+    κ::Float64 = 0.1 # [-] Inverse Stefan number
     γ::Float64 = 0.0 # [-] Surface tension coefficient
     β::Float64 = 5.0 # [-] Initial interface position
     uf::Float64 = 1e-6 # [-] Background density at interface
@@ -36,7 +36,7 @@ include("reinitialisation.jl")
     Lx::Float64 = 10.0 # [-] Spatial domain limit (x)
     Ly::Float64 = 10.0 # [-] Spatial domain limit (y)
     Lξ::Float64 = 10.0 # [-] Domain width for travelling wave (ξ)
-    T::Float64 = 1.0 # [-] End time
+    T::Float64 = 50.0 # [-] End time
     Nx::Int = 201 # [-] Number of grid points (x)
     Ny::Int = 201 # [-] Number of grid points (y)
     Nt::Int = 5001 # [-] Number of time steps
@@ -45,7 +45,7 @@ include("reinitialisation.jl")
     V_Iterations::Int = 20 # [-] Number of iterations for velocity extrapolation PDE
     ϕ_Iterations::Int = 20 # [-] Number of iterations for reinitialisation PDE
     ε::Float64 = 0.1 # [-] Small amplitude of perturbations
-    q::Float64 = 0.0 # [-] Wave number of perturbations
+    q::Float64 = 2*pi/5 # [-] Wave number of perturbations
 end
 
 "Interpolate to obtain initial condition"
@@ -167,7 +167,7 @@ function porous_fisher_stefan_2d()
             ϕ = reinitialisation(ϕ, par, dx, dy, par.ϕ_Iterations)
         end
         # Optional: Post-processing
-        if mod(i, 5000) == 0
+        if mod(i, 1000) == 0
             writedlm("ux-$i.csv", Φ[:,ny])
             writedlm("uy-$i.csv", Φ[nx,:])
             writedlm("U-$i.csv", Φ)
