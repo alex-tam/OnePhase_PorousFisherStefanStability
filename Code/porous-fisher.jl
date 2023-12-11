@@ -7,7 +7,7 @@ function pf(D, dΩ, U, ϕ, uf, y, par, dx, dy, dt, i)
     u = build_vector(U, D)
     # Construct and solve ODE problem using DifferentialEquations.jl
     prob = ODEProblem((du, u, p, t) -> pf_rhs!(du, u, p, t, D, dΩ, ϕ, uf, y, par, dx, dy), u, ((i-1)*dt, i*dt))
-    sol = solve(prob, Tsit5(), reltol = 1e-3, abstol = 1e-6, saveat = i*dt)
+    sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-16, saveat = i*dt)
     # Reshape solution to matrix
     U = build_u_matrix(sol[:,end], y, par, D)
     return U

@@ -36,10 +36,10 @@ include("reinitialisation.jl")
     Lx::Float64 = 10.0 # [-] Spatial domain limit (x)
     Ly::Float64 = 10.0 # [-] Spatial domain limit (y)
     Lξ::Float64 = 10.0 # [-] Domain width for travelling wave (ξ)
-    T::Float64 = 0.1 # [-] End time
+    T::Float64 = 10 # [-] End time
     Nx::Int = 201 # [-] Number of grid points (x)
     Ny::Int = 201 # [-] Number of grid points (y)
-    Nt::Int = 501 # [-] Number of time steps
+    Nt::Int = 1001 # [-] Number of time steps
     Nξ::Int = 101 # [-] Number of grid points for travelling wave (ξ)
     a::Float64 = 1e-2 # [-] Parameter for geometric progression
     V_Iterations::Int = 20 # [-] Number of iterations for velocity extrapolation PDE
