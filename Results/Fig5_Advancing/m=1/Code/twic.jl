@@ -76,7 +76,7 @@ function Fu(par, dz2, u, c)
         C=2/(hm*(hm+hp))
         B=-2/(hm*hp)
         A=2/(hp*(hm+hp))
-        F[i] = (C*(u[i-1])+B*u[i]+A*u[i+1]) * (abs(u[i]))^(par.m/(1+par.m))+  c*(u[i+1]-u[i-1])/(hm+hp) + (par.m+1)* u[i]*(1-(abs(u[i]))^(1/(1+par.m)))
+        F[i] = (C*(u[i-1])+B*u[i]+A*u[i+1]) * u[i]^(par.m/(1+par.m))+  c*(u[i+1]-u[i-1])/(hm+hp) + (par.m+1)* u[i]*(1-u[i]^(1/(1+par.m)))
     end
     F[par.Nξ] = u[par.Nξ]- par.uf # Dirichlet condition at interface
     return F
@@ -93,9 +93,9 @@ function Ju(par, dz2, u, c)
         C=2/(hm*(hm+hp))
         B=-2/(hm*hp)
         A=2/(hp*(hm+hp))
-        J[i,i-1] =(abs(u[i]))^(par.m/(1+par.m)) *C- c/(hm+hp) #- c/(2*dz)
-        J[i,i] = B*((2*par.m+1)/(1+par.m))*(abs(u[i]))^(par.m/(1+par.m))  + (par.m+1) - (par.m+1)* ((2*par.m+1)/(1+par.m))*(abs(u[i]))^(par.m/(1+par.m))
-        J[i,i+1] = A*(abs(u[i]))^(par.m/(1+par.m))  +c/(hm+hp)#+ c/(2*dz)
+        J[i,i-1] =u[i]^(par.m/(1+par.m)) *C- c/(hm+hp) #- c/(2*dz)
+        J[i,i] = B*((2*par.m+1)/(1+par.m))*u[i]^(par.m/(1+par.m))  + (par.m+1) - (par.m+1)* ((2*par.m+1)/(1+par.m))*u[i]^(par.m/(1+par.m))
+        J[i,i+1] = A*u[i]^(par.m/(1+par.m))  +c/(hm+hp)#+ c/(2*dz)
     end
     return J
 end
