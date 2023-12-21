@@ -36,16 +36,16 @@ include("reinitialisation.jl")
     Lx::Float64 = 10.0 # [-] Spatial domain limit (x)
     Ly::Float64 = 10.0 # [-] Spatial domain limit (y)
     Lξ::Float64 = 10.0 # [-] Domain width for travelling wave (ξ)
-    T::Float64 = 50.0 # [-] End time
+    T::Float64 = 8# [-] End time
     Nx::Int = 201 # [-] Number of grid points (x)
     Ny::Int = 201 # [-] Number of grid points (y)
-    Nt::Int = 5001 # [-] Number of time steps
+    Nt::Int = 801 # [-] Number of time steps
     Nξ::Int = 101 # [-] Number of grid points for travelling wave (ξ)
-    a::Float64 = 1e-2 # [-] Parameter for geometric progression
+    a::Float64 = 1e-5 # [-] Parameter for geometric progression
     V_Iterations::Int = 20 # [-] Number of iterations for velocity extrapolation PDE
     ϕ_Iterations::Int = 20 # [-] Number of iterations for reinitialisation PDE
     ε::Float64 = 0.1 # [-] Small amplitude of perturbations
-    q::Float64 = 2*pi/5 # [-] Wave number of perturbations
+    q::Float64 = 4*pi/5 # [-] Wave number of perturbations
 end
 
 "Interpolate to obtain initial condition"
@@ -167,7 +167,7 @@ function porous_fisher_stefan_2d()
             ϕ = reinitialisation(ϕ, par, dx, dy, par.ϕ_Iterations)
         end
         # Optional: Post-processing
-        if mod(i, 1000) == 0
+        if mod(i, 200) == 0
             writedlm("ux-$i.csv", Φ[:,ny])
             writedlm("uy-$i.csv", Φ[nx,:])
             writedlm("U-$i.csv", Φ)
